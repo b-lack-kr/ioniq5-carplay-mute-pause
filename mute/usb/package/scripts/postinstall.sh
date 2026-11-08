@@ -2,7 +2,7 @@
 . ./scripts/common.sh || exit 1
 check_install
 if has_installed && current_release; then
-    echo 'CarPlay Mute Pause 1.1.0 is already installed; its current on/off setting was kept.'
+    echo 'CarPlay Mute Pause 1.1.1 is already installed; its current on/off setting was kept.'
     exit 0
 fi
 # check_install verifies any previous release before this replacement. The HMG

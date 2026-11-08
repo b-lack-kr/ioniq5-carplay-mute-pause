@@ -99,7 +99,7 @@ def main():
         stick=work/'stick';shutil.copytree(src/'usb/stick',stick)
         (stick/'packages').mkdir()
         zip_tree(app,stick/'packages/hmgapi.neev-carplay-mute-pause.zip')
-        archive=out/'IONIQ5_CarPlay_Mute_Pause_1.1.0_USB.zip'
+        archive=out/'IONIQ5_CarPlay_Mute_Pause_1.1.1_USB.zip'
         zip_tree(stick,archive)
         print(f'{archive.name}  {hashlib.sha256(archive.read_bytes()).hexdigest()}')
 

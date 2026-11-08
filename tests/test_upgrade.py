@@ -23,6 +23,7 @@ ID='neev-carplay-mute-pause'
 OWNER='bd5f651c-38f9-8ef4-827c-34ad706c2b5c'
 APP='hmgapi.'+ID
 OLD_USB=None
+OLD_110=None
 OLD_UNBRANDED=None
 ARCHIVE=None
 CLASSES=None
@@ -61,7 +62,7 @@ class Upgrade(unittest.TestCase):
         self.pkg=self.root/'package';self.package=contents(ARCHIVE);unpack(self.package,self.pkg)
         with ZipFile(BytesIO(self.package['mod/package.zip'])) as z:
             self.expected={n:z.read(n) for n in z.namelist() if not n.endswith('/')}
-        self.assertEqual(json.loads(self.expected['mod.json'])['version'],'1.1.0')
+        self.assertEqual(json.loads(self.expected['mod.json'])['version'],'1.1.1')
         self.versions=self.root/'mutations'
         self.env=dict(os.environ,HMGAPI_ROOT=str(self.car),HMGAPI_HOST='1',
             MP_JAVA=str(JDK/'java'),MP_CLASSES=str(CLASSES),MP_MUTATIONS=str(self.versions))
@@ -75,7 +76,7 @@ ro.build.product) echo "${PRODUCT:-NEEV.KOR.0000.V039.001.260902}";;
 ro.board.platform) echo tcc803x;; sys.boot_completed) echo 1;; esac''')
         self.tool('app_process','shift\nexec "$MP_JAVA" -cp "$MP_CLASSES" "$@"')
         self.tool('hmgapid','''case "$1" in
-version) echo "hmgapid ${ENGINE_VERSION:-1.0.1}";; ping) exit 0;;
+version) printf '%s\n' "${ENGINE_VERSION_OUTPUT-hmgapid ${ENGINE_VERSION-1.0.1}}";; ping) exit 0;;
 engine) shift
     case "$1" in
     map) echo "hook map: probed, hooks ${MAP_STATE:-on}";;
@@ -104,8 +105,8 @@ engine) shift
     def engine(self,*args):
         return command([JDK/'java','-cp',CLASSES,'hmgapi.engine.Engine',*args],env=self.env)
 
-    def old(self,unbranded=False,disabled=False):
-        package=self.root/'old-package';unpack(contents(OLD_UNBRANDED if unbranded else OLD_USB),package)
+    def old(self,unbranded=False,disabled=False,archive=None):
+        package=self.root/'old-package';unpack(contents(archive or (OLD_UNBRANDED if unbranded else OLD_USB)),package)
         self.engine('install',package/'mod/package.zip','--uuid',OWNER,'--from-nemesis')
         if disabled:(self.installed/'.disabled').touch()
         return package
@@ -133,6 +134,44 @@ engine) shift
         self.hook('preinstall');self.hook('postinstall');self.assert_current(True)
         self.assertEqual(self.count(),1)
         self.hook('postinstall');self.assertEqual(self.count(),1)
+
+    def test_public_110_upgrade_on_newer_engine_preserves_disabled_and_settings(self):
+        old=self.old(disabled=True,archive=OLD_110)
+        stage=self.car/'data/local/tmp/nemesis/stage'/APP;stage.mkdir(parents=True)
+        shutil.copyfile(self.pkg/'NEMESIS.data',stage/'NEMESIS.data')
+        self.route(old)
+        # The old 1.1.0 hook must skip its exact-1.0.1 check during --update.
+        self.hook('preuninstall',package=old,ENGINE_VERSION='1.0.2')
+        self.assertEqual(json.loads((self.installed/'mod.json').read_text())['version'],'1.1.0')
+        self.hook('preinstall',ENGINE_VERSION='1.0.2')
+        self.hook('postinstall',ENGINE_VERSION='1.0.2');self.assert_current(True)
+        self.assertEqual(self.count(),1)
+        self.hook('postinstall',ENGINE_VERSION='1.0.2');self.assertEqual(self.count(),1)
+
+    def test_numeric_minimum_and_newer_engines_allow_fresh_install(self):
+        # The daemon version is mocked; signed installation uses the real host
+        # engine. This verifies our gate, not future engines' runtime behavior.
+        for version in ('1.0.1','1.0.2','1.1.0','1.10.0','2.0.0','10.0.0'):
+            with self.subTest(version=version):
+                self.hook('preinstall',ENGINE_VERSION=version)
+                self.hook('postinstall',ENGINE_VERSION=version);self.assert_current()
+                self.engine('remove',ID,'--from-nemesis')
+                self.assertFalse(self.installed.exists())
+        self.assertEqual(self.count(),6)
+
+    def test_lower_and_malformed_engines_rejected_before_mutation(self):
+        for version in ('0.9.9','0.99.99','1.0.0','','1','1.0','1.0.1.0',
+                        '1.0.2-beta','1.0.2+build','v1.0.2','01.0.2','1.00.2',
+                        '1.0.02','1..2','1.0.2.','.1.0.2','1.-1.2',
+                        '1.0.2 extra',' 1.0.2','1.0.2\nanything'):
+            with self.subTest(version=version):
+                for hook in ('preinstall','postinstall'):
+                    result=self.hook(hook,False,ENGINE_VERSION=version)
+                    self.assertIn('HMG_API_101_OR_NEWER_REQUIRED',result.stderr)
+        for output in ('1.0.2','other 1.0.2','hmgapid  1.0.2','hmgapid\t1.0.2'):
+            with self.subTest(output=output):
+                self.hook('preinstall',False,ENGINE_VERSION_OUTPUT=output)
+        self.assertFalse(self.installed.exists());self.assertEqual(self.count(),0)
 
     def test_unbranded_100_upgrade(self):
         if OLD_UNBRANDED is None:self.skipTest("optional private unbranded fixture not supplied")
@@ -167,12 +206,12 @@ engine) shift
 
 if __name__=='__main__':
     ap=argparse.ArgumentParser(description=__doc__)
-    for name in ('archive','java-home','hmg-source','old-archive','firmware-odex'):
+    for name in ('archive','java-home','hmg-source','old-archive','old-110-archive','firmware-odex'):
         ap.add_argument('--'+name,type=Path,required=True)
     ap.add_argument('--old-unbranded',type=Path,help='Optional unpublished1.0.0 NEMESIS capsule')
     a=ap.parse_args()
     ARCHIVE=a.archive.resolve();JDK=a.java_home.resolve()/'bin';HMG=a.hmg_source.resolve()
-    OLD_USB=a.old_archive.resolve();FIRMWARE=a.firmware_odex.resolve()
+    OLD_USB=a.old_archive.resolve();OLD_110=a.old_110_archive.resolve();FIRMWARE=a.firmware_odex.resolve()
     OLD_UNBRANDED=a.old_unbranded.resolve() if a.old_unbranded else None
     with tempfile.TemporaryDirectory(prefix='mute-upgrade-engine-') as t:
         CLASSES=Path(t)/'classes';CLASSES.mkdir()
