@@ -1,18 +1,16 @@
 {
   "id": "neev-carplay-mute-pause",
-  "version": "1.1.1",
-  "name": "CarPlay Pause on Steering Wheel Mute",
+  "version": "1.1.2",
+  "name": "CarPlay Mute Pause",
   "authors": [
     "by blackr"
   ],
-  "description": "Pause playing CarPlay music on vehicle mute and resume that music when mute is cleared, including a volume adjustment. Preserve stock key behavior.",
+  "description": "Pause and resume CarPlay audio with the vehicle mute control. Compatible head units only. by blackr.",
   "license": "AGPL-3.0",
   "hmgapi": ">=1.0.1",
   "system": {
-    "model": "NEEV",
-    "region": "KOR",
-    "firmware": "260902",
-    "platform": "tcc803x"
+    "platform": "tcc803x",
+    "android": "4.4.2"
   },
   "hooks": {
     "jar": "hooks.jar",

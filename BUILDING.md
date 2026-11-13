@@ -31,7 +31,7 @@ java -cp ../mute-tests kr.ioniq5.mutepause.PauseGateTest
 java -cp ../mute-tests kr.ioniq5.mutepause.MutePauseTest
 ```
 
-설치 검사는 HMG 엔진의 호스트 모드를 사용하고 Android IPC와 데몬 버전 응답은 모의합니다. 신규 설치, 공식 1.0.0·1.1.0에서의 업데이트, 설정 유지, 상위 버전 허용 및 낮거나 잘못된 버전 거부를 검사합니다. 공식 1.1.1·1.1.0·1.0.0 설치 ZIP과 자신이 보유한 대상 펌웨어의 `HKMC_DiPO.odex`를 입력으로 사용합니다. 차량·USB·작성자 키에는 접근하지 않습니다. 이 검사는 미래 HMG-API의 실제 런타임 호환성을 보장하지 않습니다.
+아래 설치 검사는 1.1.1을 대상으로 작성된 과거 테스트입니다. HMG 엔진의 호스트 모드와 모의 Android IPC를 사용하며 1.1.2나 다른 차종의 실제 설치를 검증하지 않습니다. 공식 1.1.1·1.1.0·1.0.0 설치 ZIP과 자신이 보유한 대상 펌웨어의 `HKMC_DiPO.odex`를 입력으로 사용합니다. 차량·USB·작성자 키에는 접근하지 않습니다.
 
 ```sh
 python3 tests/test_upgrade.py \
